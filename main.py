@@ -322,8 +322,41 @@ bot.tree.add_command(LeaderboardGroup())
 bot.tree.add_command(AdminGroup())
 
 # --- 実行 ---
+# --- Webサーバーとボットを並行して実行する部分 ---
+async def run_bot():
+    """ボットを起動するコルーチン"""
+    await bot.start(DISCORD_TOKEN)
+
+async def run_web_server():
+    """ヘルスチェック用のWebサーバーを起動するコルーチン"""
+    app = aiohttp.web.Application()
+    async def health_check(request):
+        return aiohttp.web.Response(text="OK")
+    
+    app.router.add_get('/', health_check)
+    runner = aiohttp.web.AppRunner(app)
+    await runner.setup()
+    # PORT環境変数がKoyebによって設定される。なければ8080をデフォルトにする。
+    site = aiohttp.web.TCPSite(runner, '0.0.0.0', int(os.getenv("PORT", 8080)))
+    print(f"Webサーバーをポート {site.name} で起動します...")
+    await site.start()
+    # このタスクが終了しないように無限に待機
+    while True:
+        await asyncio.sleep(3600)
+
+async def main():
+    """ボットとWebサーバーの両方を並行して実行する"""
+    await asyncio.gather(
+        run_bot(),
+        run_web_server()
+    )
+
 if __name__ == "__main__":
     if DISCORD_TOKEN and HYPIXEL_API_KEY:
-        bot.run(DISCORD_TOKEN)
+        # bot.run() の代わりに、asyncio.run() でmainコルーチンを実行
+        try:
+            asyncio.run(main())
+        except KeyboardInterrupt:
+            print("ボットを終了します。")
     else:
         print("エラー: 必要な環境変数 (DISCORD_TOKEN, HYPIXEL_API_KEY) が設定されていません。")
