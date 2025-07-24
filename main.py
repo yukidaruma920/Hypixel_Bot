@@ -2,6 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 import aiohttp
+from aiohttp import web
 import json
 import os
 import asyncio
