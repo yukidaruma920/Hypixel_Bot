@@ -181,6 +181,13 @@ async def update_all_leaderboards():
             
     save_data(leaderboards, LEADERBOARDS_FILE)
     print("自動更新タスクが完了しました。")
+    
+@update_all_leaderboards.error
+async def on_update_all_leaderboards_error(error):
+    """自動更新タスクで発生したエラーを捕捉してログに出力します。"""
+    print(f"自動更新タスクで予期せぬエラーが発生しました: {error}")
+    # 必要であれば、ここでタスクを再起動することもできますが、まずはエラー特定を優先します。
+    # update_all_leaderboards.restart()
 
 # --- ボットイベント ---
 @bot.event
