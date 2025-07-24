@@ -69,32 +69,49 @@ def get_jst_now() -> datetime:
     return datetime.now(JST)
 
 # --- Hypixel API & Embed生成ヘルパー ---
+# aiohttp.ClientTimeout をインポート
+import aiohttp
+
+# ... (他のヘルパー関数の下あたり) ...
+
 async def get_player_profile(session, username_input: str) -> Optional[dict]:
+    """Mojang APIからUUIDと正確な大文字小文字のユーザー名を取得する"""
     url = f"https://api.mojang.com/users/profiles/minecraft/{username_input}"
     try:
-        async with session.get(url) as response:
+        # ★ タイムアウトを5秒に設定
+        timeout = aiohttp.ClientTimeout(total=5)
+        async with session.get(url, timeout=timeout) as response:
             if response.status == 200:
                 data = await response.json()
                 if isinstance(data, dict):
                     return {'uuid': data.get('id'), 'username': data.get('name')}
+    except asyncio.TimeoutError:
+        print(f"Mojang APIへのリクエストがタイムアウトしました: {username_input}")
     except Exception as e:
-        print(f"Mojang APIエラー: {e}")
+        print(f"Mojang APIへのリクエスト中にエラーが発生しました: {e}")
     return None
 
-async def get_player_data(session, uuid):
+async def get_player_data(session, uuid: str) -> Optional[dict]:
+    """Hypixel APIからプレイヤーデータを取得する"""
     if not uuid: return None
     url = f"https://api.hypixel.net/player?key={HYPIXEL_API_KEY}&uuid={uuid}"
     try:
-        async with session.get(url) as response:
+        # ★ タイムアウトを5秒に設定
+        timeout = aiohttp.ClientTimeout(total=5)
+        async with session.get(url, timeout=timeout) as response:
             if response.status == 200:
                 data = await response.json()
                 if isinstance(data, dict) and data.get('success'):
                     return data.get('player')
             elif response.status == 429:
-                await asyncio.sleep(60)
-                return "RATE_LIMITED"
+                # ... (レート制限の処理はそのまま)
+            # ★ タイムアウト以外のステータスコードもログに出してみる
+            else:
+                print(f"Hypixel APIから予期せぬステータスコード: {response.status}")
+    except asyncio.TimeoutError:
+        print(f"Hypixel APIへのリクエストがタイムアウトしました: {uuid}")
     except Exception as e:
-        print(f"Hypixel APIエラー: {e}")
+        print(f"Hypixel APIへのリクエスト中にエラーが発生しました: {e}")
     return None
 
 async def generate_leaderboard_embed(guild: discord.Guild):
