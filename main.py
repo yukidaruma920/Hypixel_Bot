@@ -69,11 +69,6 @@ def get_jst_now() -> datetime:
     return datetime.now(JST)
 
 # --- Hypixel API & Embed生成ヘルパー ---
-# aiohttp.ClientTimeout をインポート
-import aiohttp
-
-# ... (他のヘルパー関数の下あたり) ...
-
 async def get_player_profile(session, username_input: str) -> Optional[dict]:
     """Mojang APIからUUIDと正確な大文字小文字のユーザー名を取得する"""
     url = f"https://api.mojang.com/users/profiles/minecraft/{username_input}"
@@ -104,7 +99,8 @@ async def get_player_data(session, uuid: str) -> Optional[dict]:
                 if isinstance(data, dict) and data.get('success'):
                     return data.get('player')
             elif response.status == 429:
-                # ... (レート制限の処理はそのまま)
+                await asyncio.sleep(60)
+                return "RATE_LIMITED"
             # ★ タイムアウト以外のステータスコードもログに出してみる
             else:
                 print(f"Hypixel APIから予期せぬステータスコード: {response.status}")
