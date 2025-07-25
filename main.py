@@ -48,30 +48,28 @@ def get_bedwars_prestige(level: int) -> str:
     return f"[{level}{prestige}]"
 
 def format_hypixel_rank(player_data: dict) -> str:
-    # Hypixelのプレイヤーデータからランク文字列を生成します。
-    # ★ 最優先: スタッフランクのチェック
-    # Hypixel APIでは 'GAME_MASTER' というキーで返ってくることが多いため、それをリストに含めます。
-    staff_ranks = ["OWNER", "ADMIN", "GAME_MASTER"]
+    """Hypixelのプレイヤーデータからランク文字列を生成します。"""
     rank = player_data.get("rank")
-    
-    if rank in staff_ranks:
-        return "[ዞ]" # 統一されたスタッフランクprefix
+
+    # ★ 最優先: スタッフランクのチェック
+    # 現在のAPIでは "STAFF" に統一されているため、このチェックだけで十分
+    if rank == "STAFF":
+        return "[ዞ]"
 
     # 優先度2: Youtuber
     if rank == "YOUTUBER":
         return "[YOUTUBE]"
 
     # 優先度3: Moderator
-    if rank == "MODERATOR":
+    # API上は "MODERATOR" ではなく "MOD" で返ってくる可能性も考慮
+    if rank == "MODERATOR": # 公式のランク名でチェック
         return "[MOD]"
 
-    # 優先度4: MVP++ (これが他の購入ランクより優先度が高い)
-    # このフィールドは 'monthlyPackageRank' という名前で、値は 'SUPERSTAR'
+    # 優先度4: MVP++
     if player_data.get("monthlyPackageRank") == "SUPERSTAR":
         return "[MVP++]"
 
-    # 優先度5: 通常の購入ランク (MVP+, VIP+, etc.)
-    # 新旧のフィールド（newPackageRank, packageRank）を両方考慮して安全性を高める
+    # 優先度5: 通常の購入ランク
     package_rank = player_data.get("newPackageRank", player_data.get("packageRank"))
     if package_rank == "MVP_PLUS":
         return "[MVP+]"
@@ -82,7 +80,6 @@ def format_hypixel_rank(player_data: dict) -> str:
     if package_rank == "VIP":
         return "[VIP]"
         
-    # どのランクにも該当しない一般プレイヤーの場合
     return ""
 
 JST = timezone(timedelta(hours=+9), 'JST')
