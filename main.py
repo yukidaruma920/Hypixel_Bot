@@ -48,19 +48,41 @@ def get_bedwars_prestige(level: int) -> str:
     return f"[{level}{prestige}]"
 
 def format_hypixel_rank(player_data: dict) -> str:
+    # Hypixelのプレイヤーデータからランク文字列を生成します。
+    # ★ 最優先: スタッフランクのチェック
+    # Hypixel APIでは 'GAME_MASTER' というキーで返ってくることが多いため、それをリストに含めます。
+    staff_ranks = ["OWNER", "ADMIN", "GAME_MASTER"]
     rank = player_data.get("rank")
-    if rank == "YOUTUBER": return "[YOUTUBE]"
-    if rank == "ADMIN": return "[ADMIN]"
-    if rank == "MODERATOR": return "[MOD]"
     
-    monthly_package_rank = player_data.get("monthlyPackageRank")
-    if monthly_package_rank == "SUPERSTAR": return "[MVP++]"
-    
-    new_package_rank = player_data.get("newPackageRank")
-    if new_package_rank == "MVP_PLUS": return "[MVP+]"
-    if new_package_rank == "MVP": return "[MVP]"
-    if new_package_rank == "VIP_PLUS": return "[VIP+]"
-    if new_package_rank == "VIP": return "[VIP]"
+    if rank in staff_ranks:
+        return "[ዞ]" # 統一されたスタッフランクprefix
+
+    # 優先度2: Youtuber
+    if rank == "YOUTUBER":
+        return "[YOUTUBE]"
+
+    # 優先度3: Moderator
+    if rank == "MODERATOR":
+        return "[MOD]"
+
+    # 優先度4: MVP++ (これが他の購入ランクより優先度が高い)
+    # このフィールドは 'monthlyPackageRank' という名前で、値は 'SUPERSTAR'
+    if player_data.get("monthlyPackageRank") == "SUPERSTAR":
+        return "[MVP++]"
+
+    # 優先度5: 通常の購入ランク (MVP+, VIP+, etc.)
+    # 新旧のフィールド（newPackageRank, packageRank）を両方考慮して安全性を高める
+    package_rank = player_data.get("newPackageRank", player_data.get("packageRank"))
+    if package_rank == "MVP_PLUS":
+        return "[MVP+]"
+    if package_rank == "MVP":
+        return "[MVP]"
+    if package_rank == "VIP_PLUS":
+        return "[VIP+]"
+    if package_rank == "VIP":
+        return "[VIP]"
+        
+    # どのランクにも該当しない一般プレイヤーの場合
     return ""
 
 JST = timezone(timedelta(hours=+9), 'JST')
