@@ -381,6 +381,57 @@ class AdminGroup(app_commands.Group):
         except Exception as e:
             await interaction.response.send_message(f"エラーが発生しました: {e}", ephemeral=True)
 
+    ### ★★★ ここからが新しいコマンド ★★★ ###
+    @app_commands.command(name="uploadfile", description="players.jsonをアップロードしてサーバーのデータを上書きします。")
+    @app_commands.describe(attachment="アップロードする players.json ファイル")
+    @app_commands.default_permissions(administrator=True)
+    async def uploadfile(self, interaction: discord.Interaction, attachment: discord.Attachment):
+        await interaction.response.defer(ephemeral=True)
+
+        # 1. ファイル名と形式のチェック
+        if not attachment.filename.lower() == 'players.json':
+            return await interaction.followup.send("エラー: ファイル名が `players.json` ではありません。", ephemeral=True)
+        
+        if not attachment.content_type == 'application/json':
+            return await interaction.followup.send("エラー: ファイル形式がJSONではありません。", ephemeral=True)
+
+        try:
+            # 2. ファイルの内容を読み込み、JSONとして有効か検証
+            file_content = await attachment.read()
+            # bytesをstrにデコード
+            json_text = file_content.decode('utf-8')
+            # JSONとしてパースできるか試す
+            json.loads(json_text)
+
+        except json.JSONDecodeError:
+            return await interaction.followup.send("エラー: ファイルの内容が有効なJSON形式ではありません。", ephemeral=True)
+        except Exception as e:
+            return await interaction.followup.send(f"ファイルの読み込み中に予期せぬエラーが発生しました: {e}", ephemeral=True)
+            
+        try:
+            # 3. (推奨) 既存ファイルのバックアップ
+            if os.path.exists(PLAYERS_FILE):
+                os.rename(PLAYERS_FILE, PLAYERS_FILE + ".bak")
+                print(f"既存の {PLAYERS_FILE} をバックアップしました。")
+
+            # 4. 新しいファイルの内容で上書き
+            with open(PLAYERS_FILE, 'w', encoding='utf-8') as f:
+                f.write(json_text)
+            
+            await interaction.followup.send(
+                "`players.json` のアップロードと上書きに成功しました。\n"
+                "リーダーボードに反映させるには `/leaderboard refresh` を実行してください。",
+                ephemeral=True
+            )
+            print(f"管理者 {interaction.user} によって {PLAYERS_FILE} がアップロードされました。")
+
+        except Exception as e:
+            await interaction.followup.send(f"ファイルの上書き処理中にエラーが発生しました: {e}", ephemeral=True)
+            # エラーが起きた場合はバックアップを元に戻す試み
+            if os.path.exists(PLAYERS_FILE + ".bak"):
+                os.rename(PLAYERS_FILE + ".bak", PLAYERS_FILE)
+                print("エラーが発生したため、バックアップから復元しました。")
+
 # --- コマンドをボットに登録 ---
 bot.tree.add_command(PlayerGroup())
 bot.tree.add_command(LeaderboardGroup())
