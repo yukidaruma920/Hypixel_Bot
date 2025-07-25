@@ -232,7 +232,29 @@ class PlayerGroup(app_commands.Group):
 
         all_players[guild_id_str].append({'username': exact_username, 'uuid': uuid})
         save_data(all_players, PLAYERS_FILE)
-        await interaction.followup.send(f"成功: `{exact_username}` をリーダーボードに追加しました。")
+        
+        # ★★★ ここからが追加・変更部分 ★★★
+        await interaction.followup.send(f"成功: `{exact_username}` を追加しました。リーダーボードを自動更新します...", ephemeral=True)
+        
+        # リーダーボードの自動更新処理を呼び出す
+        leaderboards = load_data(LEADERBOARDS_FILE)
+        if guild_id_str in leaderboards:
+            data = leaderboards[guild_id_str]
+            try:
+                channel = await bot.fetch_channel(data['channel_id'])
+                message = await channel.fetch_message(data['message_id'])
+                
+                # 更新中メッセージを表示（UX向上のため）
+                loading_embed = discord.Embed(title="更新中...", description="プレイヤーリストが変更されたため、リーダーボードを更新しています...", color=discord.Color.blue())
+                await message.edit(embed=loading_embed)
+                
+                # 最新のリーダーボードを生成して更新
+                new_embed = await generate_leaderboard_embed(interaction.guild)
+                await message.edit(embed=new_embed)
+                print(f"{interaction.guild.name} のリーダーボードをプレイヤー追加により自動更新しました。")
+            except Exception as e:
+                print(f"プレイヤー追加後の自動更新中にエラー: {e}")
+                # ここでのエラーはユーザーに通知しない（追加自体は成功しているため）
 
     @app_commands.command(name="remove", description="リーダーボードからMinecraftプレイヤーを削除します。")
     @app_commands.describe(username="削除するMinecraftのユーザー名")
@@ -247,10 +269,32 @@ class PlayerGroup(app_commands.Group):
         if not player_to_remove:
             return await interaction.followup.send(f"エラー: `{username}` はリストに見つかりませんでした。")
         
+        removed_username = player_to_remove['username'] # 削除される正確な名前を保持
         player_list.remove(player_to_remove)
         all_players[guild_id_str] = player_list
         save_data(all_players, PLAYERS_FILE)
-        await interaction.followup.send(f"成功: `{player_to_remove['username']}` をリーダーボードから削除しました。")
+        
+        # ★★★ ここからが追加・変更部分 ★★★
+        await interaction.followup.send(f"成功: `{removed_username}` を削除しました。リーダーボードを自動更新します...", ephemeral=True)
+
+        # リーダーボードの自動更新処理を呼び出す
+        leaderboards = load_data(LEADERBOARDS_FILE)
+        if guild_id_str in leaderboards:
+            data = leaderboards[guild_id_str]
+            try:
+                channel = await bot.fetch_channel(data['channel_id'])
+                message = await channel.fetch_message(data['message_id'])
+                
+                # 更新中メッセージを表示
+                loading_embed = discord.Embed(title="更新中...", description="プレイヤーリストが変更されたため、リーダーボードを更新しています...", color=discord.Color.blue())
+                await message.edit(embed=loading_embed)
+
+                # 最新のリーダーボードを生成して更新
+                new_embed = await generate_leaderboard_embed(interaction.guild)
+                await message.edit(embed=new_embed)
+                print(f"{interaction.guild.name} のリーダーボードをプレイヤー削除により自動更新しました。")
+            except Exception as e:
+                print(f"プレイヤー削除後の自動更新中にエラー: {e}")
 
 class LeaderboardGroup(app_commands.Group):
     def __init__(self):
